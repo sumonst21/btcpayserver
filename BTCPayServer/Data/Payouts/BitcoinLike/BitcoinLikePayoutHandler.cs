@@ -327,12 +327,11 @@ public class BitcoinLikePayoutHandler : IPayoutHandler
                     .GetTransactionAsync(derivationSchemeSettings,
                         newTransaction.NewTransactionEvent.TransactionData.TransactionHash));
                 //if the wallet related to the store related to the payout does not have the tx: it is external
-                //if the wallet has the tx but none of the inputs or outputs that matched weren't the payout's output: it is external 
-                var isInternal = storeWalletMatched is null? false:  !newTransaction.NewTransactionEvent.Outputs.All(output => storeWalletMatched.Outputs.Any(
-                    matchedOutput => matchedOutput.Index == output.Index && matchedOutput.Value == output.Value &&
-                                     matchedOutput.ScriptPubKey == output.ScriptPubKey) ) && !newTransaction.NewTransactionEvent.Outputs.All(output => storeWalletMatched.Inputs.Any(
-                    matchedInput => matchedInput.Index == output.Index && matchedInput.Value == output.Value &&
-                                     matchedInput.ScriptPubKey == output.ScriptPubKey) );
+                //if the wallet has the tx but outputs that matched weren't the payout's output: it is external 
+                var isInternal = storeWalletMatched is { } && destination.Value == storeWalletMatched.Outputs
+                    .Where(output => output.ScriptPubKey == addressTrackedSource.ScriptPubKey)
+                    .Sum(output => output.Value.GetValue(network));
+                
                 var proof = ParseProof(payout) as PayoutTransactionOnChainBlob ?? new PayoutTransactionOnChainBlob()
                 {
                     Accounted = isInternal
